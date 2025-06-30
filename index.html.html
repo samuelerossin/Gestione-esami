@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestione Esami</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0 auto;
+      max-width: 800px;
+      padding: 20px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+
+    input, select, button {
+      margin: 8px 0;
+      padding: 10px;
+      width: 100%;
+      font-size: 1em;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .materia-box {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+
+      input, select, button {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📚 Pianificazione Esami Universitari</h1>
+
+  <label>Anno di corso:</label>
+  <select id="anno">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="mag1">Magistrale 1</option>
+    <option value="mag2">Magistrale 2</option>
+  </select>
+
+  <label>Tipo di Università:</label>
+  <input id="tipoUni" placeholder="Es. triennale, magistrale, ciclo unico">
+
+  <h3>Materie</h3>
+  <div id="materie"></div>
+  <button onclick="aggiungiMateria()">+ Aggiungi materia</button>
+
+  <hr>
+  <button onclick="calcolaPiano()">📅 Calcola piano esami</button>
+
+  <h2>📊 Risultato:</h2>
+  <div id="output"></div>
+  <button onclick="scaricaPDF()">📥 Apri PDF in una nuova scheda</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    let materieContainer = document.getElementById('materie');
+
+    function aggiungiMateria() {
+      const box = document.createElement('div');
+      box.className = 'materia-box';
+      box.innerHTML = `
+        <label>Nome materia:</label>
+        <input class="nome" placeholder="Es. Analisi 2">
+        <label>CFU:</label>
+        <input class="cfu" type="number">
+        <label>Difficoltà (1-5):</label>
+        <input class="diff" type="number" min="1" max="5">
+        <label>Appelli (separati da virgola, formato YYYY-MM-DD):</label>
+        <input class="appelli" placeholder="2025-07-01,2025-07-20">
+      `;
+      materieContainer.appendChild(box);
+    }
+
+    function calcolaPiano() {
+      const oggi = new Date();
+      const materieHTML = document.querySelectorAll('.materia-box');
+      let suggerimenti = [];
+
+      materieHTML.forEach(box => {
+        const nome = box.querySelector('.nome').value;
+        const cfu = parseInt(box.querySelector('.cfu').value);
+        const diff = parseInt(box.querySelector('.diff').value);
+        const appelliStr = box.querySelector('.appelli').value;
+        const appelli = appelliStr.split(',').map(a => new Date(a.trim()));
+        const carico = cfu * diff;
+
+        let bestScore = Infinity;
+        let bestAppello = null;
+
+        appelli.forEach(data => {
+          const giorniDisponibili = (data - oggi) / (1000 * 60 * 60 * 24);
+          if (giorniDisponibili > 0) {
+            const score = carico / giorniDisponibili;
+            if (score < bestScore) {
+              bestScore = score;
+              bestAppello = data;
+            }
+          }
+        });
+
+        if (bestAppello) {
+          const inizioStudio = new Date(bestAppello);
+          inizioStudio.setDate(inizioStudio.getDate() - Math.round(carico));
+          suggerimenti.push({
+            materia: nome,
+            esame: bestAppello.toISOString().split('T')[0],
+            inizio: inizioStudio.toISOString().split('T')[0],
+            giorniStudio: Math.round(carico)
+          });
+        }
+      });
+
+      suggerimenti.sort((a, b) => a.esame.localeCompare(b.esame));
+
+      const out = document.getElementById('output');
+      out.innerHTML = '';
+      suggerimenti.forEach(s => {
+        out.innerHTML += `<p><strong>${s.materia}</strong>: esame il <b>${s.esame}</b> → inizio studio consigliato il <b>${s.inizio}</b> (${s.giorniStudio} giorni)</p>`;
+      });
+    }
+
+    function scaricaPDF() {
+      const element = document.getElementById("output");
+      const opt = {
+        margin: 0.5,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).outputPdf('bloburl').then(function(pdfUrl) {
+        window.open(pdfUrl, '_blank');
+      });
+    }
+  </script>
+
+</body>
+</html>

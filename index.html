@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Pianificazione Esami Stampabile</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0 auto;
+      max-width: 800px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    input, select, button {
+      margin: 8px 0;
+      padding: 10px;
+      width: 100%;
+      font-size: 1em;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .materia-box {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    #output {
+      background-color: #fff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    @media print {
+      button, .materia-box, #materie, select, input {
+        display: none;
+      }
+      body {
+        background: white;
+        margin: 0;
+        font-size: 14pt;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📚 Pianificazione Esami Stampabile</h1>
+
+  <label>Anno di corso:</label>
+  <select id="anno">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="mag1">Magistrale 1</option>
+    <option value="mag2">Magistrale 2</option>
+  </select>
+
+  <label>Tipo di Università:</label>
+  <input id="tipoUni" placeholder="Es. triennale, magistrale, ciclo unico">
+
+  <h3>Materie</h3>
+  <div id="materie"></div>
+  <button onclick="aggiungiMateria()">+ Aggiungi materia</button>
+  <hr>
+  <button onclick="calcolaPiano()">📅 Calcola piano intelligente</button>
+  <button onclick="window.print()">🖨️ Stampa piano</button>
+
+  <h2>📊 Risultato:</h2>
+  <div id="output"></div>
+
+  <script>
+    function aggiungiMateria() {
+      const box = document.createElement('div');
+      box.className = 'materia-box';
+      box.innerHTML = `
+        <label>Nome materia:</label>
+        <input class="nome" placeholder="Es. Analisi 2">
+        <label>CFU:</label>
+        <input class="cfu" type="number">
+        <label>Difficoltà (1-5):</label>
+        <input class="diff" type="number" min="1" max="5">
+        <label>Appelli (separati da virgola, formato YYYY-MM-DD):</label>
+        <input class="appelli" placeholder="2025-07-01,2025-07-20">
+      `;
+      document.getElementById('materie').appendChild(box);
+    }
+
+    function calcolaPiano() {
+      const oggi = new Date();
+      const materieHTML = document.querySelectorAll('.materia-box');
+      const scelte = [];
+      const appelliGlobali = [];
+
+      materieHTML.forEach(box => {
+        const nome = box.querySelector('.nome').value;
+        const cfu = parseInt(box.querySelector('.cfu').value);
+        const diff = parseInt(box.querySelector('.diff').value);
+        const appelli = box.querySelector('.appelli').value.split(',').map(s => new Date(s.trim()));
+        const carico = cfu * diff;
+
+        let bestAppello = null;
+        let bestScore = Infinity;
+
+        appelli.forEach(app => {
+          const giorniDisponibili = (app - oggi) / (1000 * 60 * 60 * 24);
+          if (giorniDisponibili <= 0) return;
+
+          const caricoGiornaliero = carico / giorniDisponibili;
+
+          let penalita = 0;
+          appelliGlobali.forEach(a => {
+            const distanza = Math.abs((app - a.data) / (1000 * 60 * 60 * 24));
+            if (distanza < 5) penalita += 2;
+            if (distanza < 10 && a.carico >= 20) penalita += 3;
+          });
+
+          const score = caricoGiornaliero + penalita;
+
+          if (score < bestScore) {
+            bestScore = score;
+            bestAppello = app;
+          }
+        });
+
+        if (bestAppello) {
+          const inizioStudio = new Date(bestAppello);
+          inizioStudio.setDate(inizioStudio.getDate() - carico);
+          appelliGlobali.push({ data: bestAppello, carico: carico });
+          scelte.push({
+            materia: nome,
+            esame: bestAppello.toISOString().split('T')[0],
+            inizio: inizioStudio.toISOString().split('T')[0],
+            giorniStudio: Math.round(carico)
+          });
+        }
+      });
+
+      const out = document.getElementById('output');
+      out.innerHTML = '<h2>📄 Piano Esami Ottimizzato</h2>';
+      scelte.sort((a, b) => a.esame.localeCompare(b.esame));
+      scelte.forEach(s => {
+        out.innerHTML += `<p><strong>${s.materia}</strong>: esame il <b>${s.esame}</b> → inizio studio <b>${s.inizio}</b> (${s.giorniStudio} giorni)</p>`;
+      });
+    }
+  </script>
+
+</body>
+</html>

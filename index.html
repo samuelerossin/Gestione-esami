@@ -84,6 +84,7 @@
 
   <h2>📊 Risultato:</h2>
   <div id="output"></div>
+  <button onclick="scaricaPDF()">📥 Scarica PDF</button>
 
 <script>
   let materieContainer = document.getElementById('materie');
@@ -151,7 +152,20 @@
       out.innerHTML += `<p><strong>${s.materia}</strong>: esame il <b>${s.esame}</b> → inizio studio consigliato il <b>${s.inizio}</b> (${s.giorniStudio} giorni)</p>`;
     });
   }
+
+  function scaricaPDF() {
+  const element = document.getElementById("output");
+  const opt = {
+    margin:       0.5,
+    filename:     'piano_esami.pdf',
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2 },
+    jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+  html2pdf().set(opt).from(element).save();
+}
 </script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
